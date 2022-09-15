@@ -2,8 +2,13 @@ GeneticAlgorithm {
 
 	var <>nGeracoes, <>geracoes; // <> = get and set
 
-	deriva {
-		arg populacao;
+	*new {
+		arg nGeracoes, geracoes;
+		^super.newCopyArgs(nGeracoes, geracoes);
+	}
+
+	derivarPopulacao {
+		arg populacao, media=3.5, variancia=5.5, tipoMutacao='trocarPosicao', qtdGeracoes=10, aptidao=8, qtdRecombinacao=3;
 		var aptos, adequacoes, adequacaoAptos, pSize, novaPop;
 
 		adequacoes = Array.newClear(populacao.size);
@@ -31,10 +36,10 @@ GeneticAlgorithm {
 				);
 
 				//agora utiliza o delta para calcular sua adequacao
-				adequacoes[n] = this.calculaFitness(delta: delta);
+				adequacoes[n] = this.calcularFitness(media, variancia, delta);
 				//finalmente aplica a regra de sobrevivencia, se é apto
 				//passa ao processo de evolução
-				if(adequacoes[n] < 8,
+				if(adequacoes[n] < aptidao,
 					{
 						aptos = aptos.add(cromo);
 						adequacaoAptos = adequacaoAptos.add(adequacoes[n]);
@@ -55,27 +60,27 @@ GeneticAlgorithm {
 		//se o número de cromossomos é nom, o cromossomo do meio da lista ficará sem trocar,
 		//pois não há com quem trocar
 
-		novaPop = this.recombinar(pSize, aptos);
+		novaPop = this.recombinar(pSize, aptos, qtdRecombinacao);
 
 		//Mutacao e geracao de novos individuos
 		//com base nos individuos aptos aplicamos uma funcao de mutacao
 
-		novaPop = this.mutar(aptos, 'divideLista', novaPop);
+		novaPop = this.mutar(aptos, tipoMutacao, novaPop);
 
 		//Manda chamar a funcao de maneira recursiva para produzir uma nova populacao
 		this.nGeracoes = this.nGeracoes+1;
 		this.geracoes = this.geracoes.add(novaPop);
 
-		if(this.nGeracoes < 10,
+		if(this.nGeracoes < qtdGeracoes,
 			{
-				this.deriva(novaPop);
+				this.derivarPopulacao(novaPop, media, variancia, tipoMutacao);
 		});
 
 		^novaPop;
 	}
 
-	calculaFitness { //mede a adequacao dos cromossomos
-		arg mediaObjetiva = 3.5, varianciaObjetiva = 5.5, delta;
+	calcularFitness { //mede a adequacao dos cromossomos
+		arg mediaObjetiva, varianciaObjetiva, delta;
 		var mediaCalculada, varianciaCalculada, diffMedia, diffVariancia, fitness;
 
 		mediaCalculada = delta.mean;
@@ -89,7 +94,7 @@ GeneticAlgorithm {
 	}
 
 	recombinar {
-		arg pSize, aptos;
+		arg pSize, aptos, qtdRecombinacoes;
 		var novaPop;
 		novaPop = Array.new;
 		((pSize/2).floor).do(
@@ -103,8 +108,7 @@ GeneticAlgorithm {
 
 				//elegemos uma posicao aleatória para
 				//recombinar elementos do cromossomo
-				//fazemos isso 3 vezes
-				3.do({
+				qtdRecombinacoes.do({
 					var val1, val2, randPos;
 
 					randPos = rrand(0, (crom1.size-1));
@@ -131,19 +135,19 @@ GeneticAlgorithm {
 
 				switch(
 					tipoMutacao,
-					'trocaPosicao', {
+					'trocarPosicao', {
 						//aplica 3 mutacoes, cada um produz um novo individuo
 						//troca de lugar dois elementos aleatorios do cromossomo
 						new = item.swap((rrand(0, item.size-1)), (rrand(0, item.size-1)));
 						novaPop = novaPop.add(new);
 					},
-					'aplicaModulo', {
+					'aplicarModulo', {
 						// multplica por 2 e aplica o modulo para que nao rebace
 						// o range de valores selecionados no inicio.
 						new = item.collect({|it, n| (it*2)%15});
 						novaPop = novaPop.add(new);
 					},
-					'divideLista', {
+					'dividirLista', {
 						// Divide em dois a lista e troca de posicao as duas partes
 						splitIndx = rrand(0, item.size-1);
 						temp1 = item[0..(splitIndx-1)];

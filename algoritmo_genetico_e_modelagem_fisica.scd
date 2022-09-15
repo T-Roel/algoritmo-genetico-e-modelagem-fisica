@@ -9,20 +9,13 @@ Thales Roel - thalesroel@hotmail.com
 Quarks.install("https://github.com/supercollider-quarks/MathLib"); //instalar para obter a colecao .variance
 
 //Abaixo é aplicado uma população inicial de 100 cromossomos
-//Obtem-se uma lista delta para cara elemento que é utilizado para medir sua adequacao
+//Obtem-se uma lista delta para cada elemento que é utilizado para medir sua adequacao
+~algoritmoGenetico = GeneticAlgorithm.new(0, Array.new);
+~geracoes = Array.new;
 
-~delta = Array.new(5);
-~delta.add(3);
-~delta.add(6);
-~delta.add(19);
-~teste = GeneticAlgorithm.new;
-~teste.nGeracoes_(0);
-~teste.geracoes_(Array.new);
-
-~teste.calculaFitness(delta: ~delta);
-~teste.calculaFitness(2.1,4.3, ~delta);
 //100 listas com 12 elementos que possuem valores aleatórios entre 0 e 14
-~teste.deriva(Array.fill(100, {Array.fill(12, { rrand(0,14)})}));
+~populacao = Array.fill(100, {Array.fill(12, { rrand(0,14)})});
+~geracoes.add(~algoritmoGenetico.derivarPopulacao(~populacao));
 
 Scale.directory
 
@@ -149,9 +142,9 @@ SynthDef(\pmCrotales, {
 ).add;
 
 {
-	~geracoes.do({|generacion, i|
+	~geracoes.do({|geracao, i|
 
-		generacion.do({|cromo, j|
+		geracao.do({|cromo, j|
 			cromo.postln;
 			~marimba = Pbind(\instrument, \marimba1,
 				\octave, 5,
