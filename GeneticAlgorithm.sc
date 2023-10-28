@@ -1,167 +1,164 @@
 GeneticAlgorithm {
 
-	var <>nGeracoes, <>geracoes; // <> = get and set
+	var <>numGenerations, <>generations; // <> = get and set
 
 	*new {
-		arg nGeracoes, geracoes;
-		^super.newCopyArgs(nGeracoes, geracoes);
+		arg numGenerations, generations;
+		^super.newCopyArgs(numGenerations, generations);
 	}
 
-	derivarPopulacao {
-		arg populacao, media=3.5, variancia=5.5, tipoMutacao='trocarPosicao', qtdGeracoes=10, aptidao=8, qtdRecombinacao=3;
-		var aptos, adequacoes, adequacaoAptos, pSize, novaPop;
+	createNewPopulation {
+		arg population, mean=3.5, variance=5.5, typeOfMutation='changePosition', qtyGen=10, fitness=8, amtRecombination=3;
+		var fit, adjustments, fitAdjustments, popSize, newPop;
 
-		adequacoes = Array.newClear(populacao.size);
-		//não sabemos quantos aptos vao aparecer na pop inicial
-		aptos = Array.new;
-		adequacaoAptos = Array.new;
+		adjustments = Array.newClear(population.size);
+		// We don't know how many candidates will appear in the initial pop
+		fit = Array.new;
+		fitAdjustments = Array.new;
 
-		populacao.do(
+		population.do(
 			{
-				arg cromo, n;
-				var delta, adequacao;
-				//delta é uma lista do menor elemento de cada cromossomo
-				delta = Array.newClear(cromo.size-1);
+				arg chromo, n;
+				var delta, adequacy;
+				// delta is a list of the smallest element of each chromosome
+				delta = Array.newClear(chromo.size-1);
 
-				//calcula o delta de cada cromo
-				cromo.do(
+				// calculate delta for each chromo
+				chromo.do(
 					{
-						arg item, i;
-						if(i < (cromo.size-1),
+						arg item, index;
+						if(index < (chromo.size-1),
 							{
-								delta[i] = abs(item-cromo[i+1])
+								delta[index] = abs(item-chromo[index+1])
 							}
 						);
 					}
 				);
 
-				//agora utiliza o delta para calcular sua adequacao
-				adequacoes[n] = this.calcularFitness(media, variancia, delta);
-				//finalmente aplica a regra de sobrevivencia, se é apto
-				//passa ao processo de evolução
-				if(adequacoes[n] < aptidao,
+				// now uses the delta to calculate its suitability
+				adjustments[n] = this.calculateFitness(mean, variance, delta);
+
+				// finally applies the survival rule, if it is fit it goes through the evolution process
+				if(adjustments[n] < fitness,
 					{
-						aptos = aptos.add(cromo);
-						adequacaoAptos = adequacaoAptos.add(adequacoes[n]);
+						fit = fit.add(chromo);
+						fitAdjustments = fitAdjustments.add(adjustments[n]);
 					}
 				);
 			}
 		);
 
-		pSize = aptos.size;
+		popSize = fit.size;
 
-		//agora os aptos contem os cromossomos que cumprem com a funcao de adequacao
-		//que definimos a principio
+		/*
+		now the fit ones contain the chromosomes that fulfill the fitness function
+		that we defined at the beginning. Therefore, we must apply them a process
+		of evolution, with recombination and mutation.
 
-		//agora devemos aplicá-los um processo de evolucao, com recombinacao e mutacao
+		Recombination
+		Let's merge genes from a chromosome at the beginning of the fit list with one at the end
+		if the number of chromosomes is nom, the chromosome in the middle of the list will remain
+		without changing, because there is no one to exchange with
 
-		//Recombinacao
-		//Vamos mesclar genes de um cromossomo do principio da lista de aptos com um do final
-		//se o número de cromossomos é nom, o cromossomo do meio da lista ficará sem trocar,
-		//pois não há com quem trocar
-
-		novaPop = this.recombinar(pSize, aptos, qtdRecombinacao);
-
-		//Mutacao e geracao de novos individuos
-		//com base nos individuos aptos aplicamos uma funcao de mutacao
-
-		novaPop = this.mutar(aptos, tipoMutacao, novaPop);
+		Mutation
+		It is the generation of new individuals based on suitable individuals, we apply a mutation
+		function
+		*/
+		newPop = this.recombine(popSize, fit, amtRecombination);
+		newPop = this.mutate(fit, typeOfMutation, newPop);
 
 		//Manda chamar a funcao de maneira recursiva para produzir uma nova populacao
-		this.nGeracoes = this.nGeracoes+1;
-		this.geracoes = this.geracoes.add(novaPop);
+		this.numGenerations = this.numGenerations+1;
+		this.generations = this.generations.add(newPop);
 
-		if(this.nGeracoes < qtdGeracoes,
+		if(this.numGenerations < qtyGen,
 			{
-				this.derivarPopulacao(novaPop, media, variancia, tipoMutacao);
+				this.createNewPopulation(newPop, mean, variance, typeOfMutation);
 		});
 
-		^novaPop;
+		^newPop;
 	}
 
-	calcularFitness { //mede a adequacao dos cromossomos
-		arg mediaObjetiva, varianciaObjetiva, delta;
-		var mediaCalculada, varianciaCalculada, diffMedia, diffVariancia, fitness;
+	calculateFitness { // measures the adequacy of chromosomes
+		arg objectiveMean, objectiveVariance, delta;
+		var calculateMean, calculateVariance, diffMean, diffVariance, fitness;
 
-		mediaCalculada = delta.mean;
-		varianciaCalculada = delta.variance;
-		diffMedia = (mediaObjetiva - mediaCalculada); //obtemos a diferenca entre a média objetiva e a média calculada
-		diffVariancia = (varianciaObjetiva - varianciaCalculada); //obtemos a diferenca entre a variancia objetiva e a calculada
+		calculateMean = delta.mean;
+		calculateVariance = delta.variance;
+		diffMean = (objectiveMean - calculateMean); // we obtain the difference between the objective mean and the calculated mean
+		diffVariance = (objectiveVariance - calculateVariance); // we obtain the difference between the objective and the calculated variance
 
-		//Elevamos ao quadrado para provocar que o erro incremente quanto maior ele for
-		fitness = pow(diffMedia, 2) + pow(diffVariancia, 2);
+		// We square it to cause the error to increase the larger it is
+		fitness = pow(diffMean, 2) + pow(diffVariance, 2);
 		^fitness;
 	}
 
-	recombinar {
-		arg pSize, aptos, qtdRecombinacoes;
-		var novaPop;
-		novaPop = Array.new;
-		((pSize/2).floor).do(
+	recombine {
+		arg popSize, fit, amtRecombination;
+		var newPop;
+		newPop = Array.new;
+		((popSize/2).floor).do(
 			{
-				|i|
-				var ranPos, pair, reverseIndx, crom1, crom2;
+				|index|
+				var ranPos, pair, reverseIndx, chromOne, chromTwo;
 
-				reverseIndx = (pSize-(i+1));
-				crom1 = aptos[i];
-				crom2 = aptos[reverseIndx];
+				reverseIndx = (popSize-(index+1));
+				chromOne = fit[index];
+				chromTwo = fit[reverseIndx];
 
-				//elegemos uma posicao aleatória para
-				//recombinar elementos do cromossomo
-				qtdRecombinacoes.do({
-					var val1, val2, randPos;
+				// we choose a random position to recombine chromosome elements
+				amtRecombination.do({
+					var valOne, valTwo, randPos;
 
-					randPos = rrand(0, (crom1.size-1));
-					val1 = crom1[randPos];
-					val2 = crom2[randPos];
-					crom1[randPos] = val2;
-					crom2[randPos] = val1;
+					randPos = rrand(0, (chromOne.size-1));
+					valOne = chromOne[randPos];
+					valTwo = chromTwo[randPos];
+					chromOne[randPos] = valTwo;
+					chromTwo[randPos] = valTwo;
 				});
 
-				novaPop = novaPop.add(crom1);
-				novaPop = novaPop.add(crom2);
+				newPop = newPop.add(chromOne);
+				newPop = newPop.add(chromTwo);
 			}
 		);
 
-		^novaPop;
+		^newPop;
 	}
 
-	mutar {
-		arg aptos, tipoMutacao, novaPop;
-		aptos.do(
+	mutate {
+		arg fit, typeOfMutation, newPop;
+		fit.do(
 			{
-				arg item, i;
-				var new, temp1, temp2, splitIndx;
+				arg item, index;
+				var new, tempOne, tempTwo, splitIndex;
 
 				switch(
-					tipoMutacao,
-					'trocarPosicao', {
-						//aplica 3 mutacoes, cada um produz um novo individuo
-						//troca de lugar dois elementos aleatorios do cromossomo
+					typeOfMutation,
+					'changePosition', {
+						// applies 3 mutations, each one produces a new individual and swaps two random elements of the chromosome
 						new = item.swap((rrand(0, item.size-1)), (rrand(0, item.size-1)));
-						novaPop = novaPop.add(new);
+						newPop = newPop.add(new);
 					},
-					'aplicarModulo', {
-						// multplica por 2 e aplica o modulo para que nao rebace
-						// o range de valores selecionados no inicio.
+					'applyModule', {
+						// Multiply by 2 and apply the modulus so that it does not exceed the range of values ​​selected at the beginning.
 						new = item.collect({|it, n| (it*2)%15});
-						novaPop = novaPop.add(new);
+						newPop = newPop.add(new);
 					},
-					'dividirLista', {
-						// Divide em dois a lista e troca de posicao as duas partes
-						splitIndx = rrand(0, item.size-1);
-						temp1 = item[0..(splitIndx-1)];
-						temp2 = item[splitIndx..((item.size)-1)];
-						new = temp2++temp1;
+					'divideArray', {
+						// Divide the array in two and swap the two parts
+						splitIndex = rrand(0, item.size-1);
+						tempOne = item[0..(splitIndex-1)];
+						tempTwo = item[splitIndex..((item.size)-1)];
+						new = tempTwo++tempOne;
 					}
 				);
 
 				new = new[0..11];
 
-				novaPop = novaPop.add(new);
+				newPop = newPop.add(new);
 			}
 		);
 
-		^novaPop;
+		^newPop;
 	}
 }
